@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "advent-of-code-2023"
+version = "0.1.0"
+description = "Advent of code attempty - 2023"
+authors = ["Heuristic Pedals <heuristicpedals@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
