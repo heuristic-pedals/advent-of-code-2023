@@ -88,24 +88,19 @@ def text_to_digit(line: str) -> str:
         "nine": "9",
     }
 
-    # keep going until all text instances have been converted
-    while True:
-        # record the occurance index for each possible text value (-1 if not
-        # present)
-        start_positions = {}
-        for text in TEXT_DIGIT.keys():
+    # record the occurance index for each possible text value (-1 if absent)
+    start_positions = {}
+    for text in TEXT_DIGIT.keys():
+        start_idx = line.find(text)
+        if start_idx != -1:
             start_positions[text] = line.find(text)
 
-        # drop cases where the text isn't present
-        start_positions = {k: v for k, v in start_positions.items() if v != -1}
-
-        # if text is found, get the text that starts earliest and replace
-        # preserving the last character
-        if start_positions != {}:
-            earliest_text = min(start_positions, key=start_positions.get)
-            line = line.replace(earliest_text[:-1], TEXT_DIGIT[earliest_text])
-        else:
-            break
+    # if text is found, sort the occurances and replace them in order
+    # preserving the last character incase it's reused for the next text
+    if start_positions != {}:
+        sorted_texts = sorted(start_positions.items(), key=lambda x: x[1])
+        for sorted_text, _ in sorted_texts:
+            line = line.replace(sorted_text[:-1], TEXT_DIGIT[sorted_text])
 
     return line
 
