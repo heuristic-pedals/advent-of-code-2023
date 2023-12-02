@@ -21,14 +21,20 @@ BALL_LIMITS = {
 }
 
 
-def parse_game(game: str) -> Tuple[int, bool]:
-    """Parse a game a determine plausability.
+def parse_game(game: str) -> Tuple[int, bool, int]:
+    """Parse a game to determine plausability and power.
 
-    Retrieves the game's id and determines its plausability considering ball
-    counts by color across game sets. Plausability is defined by sets that
-    have ball counts for all colors below (or equal to) the treshold for the
-    color. If any count if above this theshold the whole game is deemed
-    infeasible.
+    Retrieves the game's id and determines its plausability and power
+    considering ball counts by color across game sets.
+
+    Plausability is defined by sets that have ball counts for all colors below
+    (or equal to) the treshold for the color. If any count is above this
+    theshold the whole game is deemed infeasible.
+
+    Power is defined as the multiplcation of minimum possible ball counts by
+    color. The minimum possible ball count for each color refers to be the
+    maximum number of balls observed within a set, across all sets for that
+    color.
 
     Parameters
     ----------
@@ -37,11 +43,14 @@ def parse_game(game: str) -> Tuple[int, bool]:
 
     Returns
     -------
-    Tuple[int, bool]
+    Tuple[int, bool, int]
         Game outcome. First element is the game id. The second element is the
         outcome - game is possible when this is True.
 
     """
+    # default assumption is game is possible
+    possible = True
+
     # find and extract the game id
     game_id_match = re.findall("Game [0-9]*:", game)[0]
     game_id = int(re.sub("[^0-9]", "", game_id_match))
@@ -50,8 +59,9 @@ def parse_game(game: str) -> Tuple[int, bool]:
     # split into game sets at semi colons
     game_sets = game.replace(game_id_match, "").split(";")
 
-    # collect possible ball colors
+    # collect possible ball colors and instantiate minimum occurance records
     colors = BALL_LIMITS.keys()
+    min_possible_balls = {k: 0 for k in colors}
 
     for game_set in game_sets:
         # get rid of the initial space and split balls at commas
@@ -72,14 +82,39 @@ def parse_game(game: str) -> Tuple[int, bool]:
             [set_color_counts[color] > BALL_LIMITS[color] for color in colors]
         )
         if impossible:
-            return game_id, False
+            possible = False
 
-    return game_id, True
+        # update the minimum possible ball count for each color after this set
+        # if previous minimum is 0 and this set it's not zero, then update
+        # also update if this set has and non zero count greater than what
+        # has been seen previuosly
+        for color in colors:
+            if (
+                (min_possible_balls[color] == 0)
+                & (set_color_counts[color] > 0)
+            ) | (
+                (set_color_counts[color] > 0)
+                & (set_color_counts[color] > min_possible_balls[color])
+            ):
+                min_possible_balls[color] = set_color_counts[color]
+
+    # calculate the power - multiply all minium possible counts together
+    power = 1
+    for minimum_count in min_possible_balls.values():
+        power *= minimum_count
+
+    return game_id, possible, power
 
 
 if __name__ == "__main__":
-    # part 1 solution
+    # prep inputs and parse
     lines = read_text_file(INPUT_PATH)
     results = [parse_game(line) for line in lines]
+
+    # part 1 solution
     possible_games_id_sum = sum([result[0] for result in results if result[1]])
     print(f"Part 1: Sum of possible game ids is {possible_games_id_sum}.")
+
+    # part 2 solution
+    sum_of_power = sum([result[2] for result in results])
+    print(f"Part 2: Sum of power is {sum_of_power}.")
