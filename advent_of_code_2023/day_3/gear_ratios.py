@@ -11,7 +11,7 @@ from advent_of_code_2023.utils import read_text_file
 INPUT_FILE = "data/day_3/input.txt"
 
 
-def get_part_numbers(lines: list[str]) -> list[int]:
+def get_part_numbers_and_gear_ratios(lines: list[str]) -> list[int]:
     """Extract part numbers from a schematic.
 
     Part numbers are decoded by finding special characters surrounding (inc.
@@ -28,10 +28,12 @@ def get_part_numbers(lines: list[str]) -> list[int]:
         valid part numbers
 
     """
-    # create variable to prevent reuse and initialise some empty lists
+    # create variable to prevent reuse and initialise some empty lists and
+    # start a log of gear positions
     num_lines = len(lines)
     num_cols = len(lines[0])
     part_nums = []
+    gears_log = {}
 
     for i in range(0, num_lines):
         # extract all the numbers and their start/end indcies
@@ -62,13 +64,105 @@ def get_part_numbers(lines: list[str]) -> list[int]:
             if char_match:
                 part_nums.append(int(potential_pn))
 
-    return part_nums
+                # update gear records
+                gears_log = update_gears_log(
+                    gears_log,
+                    potential_pn,
+                    char_search_string,
+                    max_col,
+                    min_col,
+                    min_row,
+                )
+
+    gear_powers = calculate_gear_ratios(gears_log)
+
+    return part_nums, gear_powers
+
+
+def update_gears_log(
+    log: dict,
+    pn: str,
+    search_string: str,
+    max_col: int,
+    min_col: int,
+    min_row: int,
+) -> dict:
+    """Update the gear position logs.
+
+    This updates the records of gear positions if the part number is next to a
+    gear symbol. A gear's symbol is an asterix (*). If one is found, it's
+    coordinates are translated to row/col format and the part number is logged
+    against that gear.
+
+    Parameters
+    ----------
+    log : dict
+        record of gear positions and neighbouring part numbers
+    pn : str
+        part number to check and update
+    search_string : str
+        string to search for gears
+    max_col : int
+        max possible gear column position index
+    min_col : int
+        min possible gear column position index
+    min_row : int
+        min possible gear row position
+
+    Returns
+    -------
+    dict
+        gear records, updated with the gear/pn pair if a gear is detected.
+
+    """
+    pn_by_gear = re.search(r"\*", search_string)
+    if pn_by_gear:
+        # get it's index and translate to row/column coordinates
+        gear_idx = pn_by_gear.start()
+        gear_col = (gear_idx % (max_col - min_col)) + min_col
+        gear_row = min_row + int(gear_idx / (max_col - min_col))
+
+        # update the logs with the part number
+        gear_id = (gear_row, gear_col)
+        if gear_id not in log.keys():
+            log[gear_id] = []
+        log[gear_id].append(int(pn))
+
+    return log
+
+
+def calculate_gear_ratios(gear_log: dict) -> dict:
+    """Calculate the gear ratios.
+
+    Take the gear logs and calculate its power only when 2 part numbers are in
+    its proximity.
+
+    Parameters
+    ----------
+    gear_log : dict
+        gear position and neighbouring part number logs.
+
+    Returns
+    -------
+    gear_powers : dict
+        records of gear powers. keys are the row/col index of the input data
+        (same as gear log)
+
+    """
+    gear_powers = {}
+    for gear_id, pns in gear_log.items():
+        if len(pns) == 2:
+            gear_powers[gear_id] = pns[0] * pns[1]
+    return gear_powers
 
 
 if __name__ == "__main__":
     # get schematic input
     lines = read_text_file(INPUT_FILE)
+    pns, gear_powers = get_part_numbers_and_gear_ratios(lines)
 
     # part 1 solution
-    pns = get_part_numbers(lines)
     print(f"Part 1: Sum of found part number is {sum(pns)}")
+
+    # part 2 solution
+    print(f"Part 2: Sum of gear powers is {sum(list(gear_powers.values()))}")
