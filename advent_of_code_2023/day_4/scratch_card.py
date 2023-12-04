@@ -6,14 +6,15 @@ Source: https://adventofcode.com/2023/day/4
 
 import re
 
-from typing import Tuple
+from collections import defaultdict
+from typing import Tuple, Type
 
 from advent_of_code_2023.utils import read_text_file
 
 INPUT_FILE = "data/day_4/input.txt"
 
 
-def calculate_game_score(line: str) -> Tuple[int, int]:
+def calculate_game_score(line: str) -> Tuple[int, int, int]:
     """Calculate the scratch card game score.
 
     The input game string is of the expected format:
@@ -30,8 +31,9 @@ def calculate_game_score(line: str) -> Tuple[int, int]:
 
     Returns
     -------
-    Tuple[int, int]
-        the game id (index 0) and the game's score (index 1).
+    Tuple[int, int, int]
+        the game id (index 0), the game's score (index 1), and the number of
+        matching numbers (index 2).
 
     Raises
     ------
@@ -42,6 +44,11 @@ def calculate_game_score(line: str) -> Tuple[int, int]:
         the expected value.
         - when duplicate values are detected within the set winning numbers or
         scratch card numbers.
+
+    See Also
+    --------
+    advent_of_code_2023.day_4.calculate_number_of_cards, which calculates the
+    number of card occurances (including copies of subsiquent wins).
 
     Notes
     -----
@@ -56,7 +63,7 @@ def calculate_game_score(line: str) -> Tuple[int, int]:
     # parse out the card id, raising an error if it could not detect one
     card_id_match = re.search("[0-9]+", card_name)
     if card_id_match:
-        card_id = card_id_match.group()
+        card_id = int(card_id_match.group())
     else:
         ValueError("Unable to find a card id.")
 
@@ -102,7 +109,82 @@ def calculate_game_score(line: str) -> Tuple[int, int]:
     else:
         points = 0
 
-    return card_id, points
+    return card_id, points, len(common_nums)
+
+
+def get_copies(id: int, num_match: int) -> list:
+    """Calculate ids of scratch card copies.
+
+    Parameters
+    ----------
+    id : int
+        card id
+    num_match : int
+        number to name (after the id)
+
+    Returns
+    -------
+    list
+        ids the following num_match number of card ids.
+
+    """
+    return list(range(id + 1, id + num_match + 1))
+
+
+def calculate_number_of_cards(lines: list[str]) -> Type[defaultdict[int]]:
+    """Calculate the number of occurances of each card.
+
+    Recursively calculates the number of scratch card occurances, including
+    those that are 'copies' of previous scratch cards 'wins' up to the point
+    where no further scratch cards are won.
+
+    Parameters
+    ----------
+    lines : list[str]
+        input corresponding to all the scratch card game strings.
+
+    Returns
+    -------
+    Type[defaultdict[int]]
+        counts of scratch card occurances (values) per card id (keys).
+
+    See Also
+    --------
+    advent_of_code_2023.day_4.calculate_game_score, which calculates the scores
+    per game.
+
+    Notes
+    -----
+    This method is based off the number of matching numbers, not the scratch
+    card scores.
+
+    """
+    # create record of number of matches (values) for each game id (keys)
+    game_scores = [calculate_game_score(line) for line in lines]
+    matching_nums = {game[0]: game[2] for game in game_scores}
+
+    # instantiate a default dict - faster than normal dicts + don't need to
+    # initially check if the key is present
+    counts = defaultdict(int)
+
+    for id, num_matches in matching_nums.items():
+
+        # add one for the original card and get it's copies
+        counts[id] += 1
+        copies_ids = get_copies(id, num_matches)
+
+        for copy_id in copies_ids:
+            # get the it's copies and append them to the original copies list
+            # this means all future copies will also be analysed in this way
+            copy_copies_ids = get_copies(copy_id, matching_nums[copy_id])
+            for copy_copies_id in copy_copies_ids:
+                copies_ids.append(copy_copies_id)
+
+        # add counts of each copy
+        for copy in copies_ids:
+            counts[copy] += 1
+
+    return counts
 
 
 if __name__ == "__main__":
@@ -113,3 +195,8 @@ if __name__ == "__main__":
     game_scores = [calculate_game_score(line) for line in lines]
     total_game_scores = sum([game[1] for game in game_scores])
     print(f"Part 1: Sum of game scores is {total_game_scores}")
+
+    # part 2 solution
+    card_counts = calculate_number_of_cards(lines)
+    total_number_cards = sum([v for v in card_counts.values()])
+    print(f"Part 2: Total number of scratch cards is {total_number_cards}")
