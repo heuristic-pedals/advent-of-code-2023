@@ -97,7 +97,9 @@ def get_seeds(seeds_line: str) -> list[int]:
     return [int(num.group()) for num in re.finditer("[0-9]+", seeds_line)]
 
 
-def build_map(lines: list[str], map_name: str) -> list[tuple[int, int, int]]:
+def build_map(
+    lines: list[str], map_name: str
+) -> list[tuple[int, int, int, int]]:
     """Build a map 'layer' by parsing almanac lines.
 
     Initially detects the map name in the almanac. From this point onwards, it
@@ -105,9 +107,8 @@ def build_map(lines: list[str], map_name: str) -> list[tuple[int, int, int]]:
     value is translated into a set of limits (min_source, max_source,
     min_destination) such that they can be used to translate values through a
     sequence of maps (without storing a whole lookup, which would be slow to
-    use and memory intensive). Note: max_destination is not needed, since the
-    'distance' from the min_source value is all that's needed during
-    translation. Parsing stops once a blank line or EOF is reached.
+    use and memory intensive). Parsing stops once a blank line or EOF is
+    reached.
 
     Parameters
     ----------
@@ -118,9 +119,9 @@ def build_map(lines: list[str], map_name: str) -> list[tuple[int, int, int]]:
 
     Returns
     -------
-    list[tuple[int, int, int]]
+    list[tuple[int, int, int, int]]
         list of translation limits, in order min_source, max_source,
-        min_destionation.
+        min_destionation, max_destination
 
     Raises
     ------
@@ -156,6 +157,7 @@ def build_map(lines: list[str], map_name: str) -> list[tuple[int, int, int]]:
                 limits[1],
                 limits[1] + limits[2] - 1,
                 limits[0],
+                limits[0] + limits[2] - 1,
             )
         )
 
@@ -167,6 +169,121 @@ def build_map(lines: list[str], map_name: str) -> list[tuple[int, int, int]]:
     return maps
 
 
+def reverse_map_to_min_location(
+    lines: list[str], progress: bool = False
+) -> int:
+    """Apply maps on almanac in reverse to get the minimum valid location.
+
+    Determines the minimum location for which there is a valid seed. Here,
+    seeds are considered in start number/length pairs, drastically increasing
+    the number of seeds to 'analyse'. For performance reasons, the maps are
+    applied in reverse - from a location to determine it's seed. This starts at
+    location 0 up until a valid seed is found. This way, there are far fewer
+    calculations to perform than a brute force approach relying on an entire
+    list of seeds (this was the initial attempt - would have taken ~1.5hrs)!
+
+    TODO:
+    - a single common map list (common to this and `get_seed_location_lookup`)
+    - infer map list of almanac itself
+    - consider parallesing to speed this up (takes about 1-2mins currently)
+
+    Parameters
+    ----------
+    lines : list[str]
+        Lines of input almanac.
+    progress : bool, optional
+        Print progress updates to screen. Updates gvien when whole 1e6 reached.
+        By default false, meaning updates aren't printed.
+
+    Returns
+    -------
+    int
+        minimum location for which there is a valid seed.
+
+    See Also
+    --------
+    advent_of_code.day_5.get_seed_location_lookup
+
+    """
+    # knife and fork seed numbers out of first line
+    seed_ranges = get_seed_range(lines[0])
+
+    # maps needs to be applied in reverse, so reverse this list
+    map_names = reversed(
+        [
+            "seed-to-soil map:",
+            "soil-to-fertilizer map:",
+            "fertilizer-to-water map:",
+            "water-to-light map:",
+            "light-to-temperature map:",
+            "temperature-to-humidity map:",
+            "humidity-to-location map:",
+        ]
+    )
+    maps = {}
+
+    # build the map for each map defined in the input
+    for map_name in map_names:
+        maps[map_name] = build_map(lines, map_name)
+
+    # start a location zero and initiate while loop
+    location = 0
+    not_in_seeds = True
+    while not_in_seeds:
+        # handle progress updates - use end arg to overwrite previous print
+        if (progress) & (location % 1e6 == 0) & (location != 0):
+            print(f"Part 2 Update: reached {location}...", end="\r")
+
+        # start `previuous` at the location to test
+        previous = location
+        for map_name, map_limits_list in maps.items():
+            # apply maps in reverse order
+            current = None
+            for map_limits in map_limits_list:
+                if (previous >= map_limits[2]) & (previous <= map_limits[3]):
+                    current = map_limits[0] + (previous - map_limits[2])
+                    break
+
+            # handle case if current wasn't set (pass through the result)
+            if current is None:
+                current = previous
+            previous = current
+
+        # check if seed lies in any range - break while loop if that's true
+        for seed_range in seed_ranges:
+            if (previous >= seed_range[0]) & (previous <= seed_range[1]):
+                not_in_seeds = False
+                break
+
+        # increment location when needed
+        if not_in_seeds:
+            location += 1
+
+    return location
+
+
+def get_seed_range(seed_line: str) -> list[tuple[int, int]]:
+    """Decode seed start/length pairs into max and min seed values.
+
+    Parameters
+    ----------
+    seed_line : str
+        first line in input almanac
+
+    Returns
+    -------
+    list[tuple[int, int]]
+        seed line parsed into a min/max seed values for the prescibed range.
+
+    """
+    nums = get_seeds(seed_line)
+    ranges = []
+    for i in range(0, len(nums), 2):
+        ranges.append((nums[i], nums[i] + nums[i + 1] - 1))
+
+    return ranges
+
+
 if __name__ == "__main__":
     # prep input
     lines = read_text_file(INPUT_FILE)
@@ -175,3 +292,7 @@ if __name__ == "__main__":
     seed_location_lup = get_seed_location_lookup(lines)
     min_location = min(seed_location_lup.values())
     print(f"Part 1: Minimum location is {min_location}")
+
+    # part 2 solution
+    min_location = reverse_map_to_min_location(lines, progress=True)
+    print(f"Part 2: Minimum location is {min_location}")
