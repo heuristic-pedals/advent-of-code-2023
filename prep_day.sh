@@ -20,7 +20,7 @@ else
     echo "Prepping for day number: $day_num"
     mkdir data/day_"$day_num"
     touch data/day_"$day_num"/input.txt
-    touch data/day_"$day_num"/practice_input.txt
+    touch data/day_"$day_num"/test_input.txt
     mkdir advent_of_code_2023/day_"$day_num"
     touch advent_of_code_2023/day_"$day_num"/"$f_name".py
 fi
