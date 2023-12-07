@@ -12,7 +12,7 @@ from advent_of_code_2023.utils import read_text_file
 INPUT_DATA = "data/day_7/input.txt"
 
 
-def sum_ranked_bids(lines: list[str]) -> int:
+def sum_ranked_bids(lines: list[str], joker: bool = False) -> int:
     """Calculat the sum of ranked bids.
 
     Parses out each hand and bid, and determines the rank of hand. Hands of
@@ -20,11 +20,17 @@ def sum_ranked_bids(lines: list[str]) -> int:
     first to last card. Then each hand's rank is multiplied by it's bid, then
     all summed together.
 
+    Can also treat "J" as 'jokers' instead of 'jacks' using `jocker`. In the
+    joker format of the game, these are the least value card & can take the
+    form of any other card that gives the best possible hand.
+
     Parameters
     ----------
     lines : list[str]
         input hands/bid strings. expected in CCCCC <BID> format (space sep),
         where CCCCC are the cards of the hand, and <BID> is the bid value.
+    joker : bool, optional
+        treat "J" as a joker instead of a jack.
 
     Returns
     -------
@@ -48,14 +54,14 @@ def sum_ranked_bids(lines: list[str]) -> int:
         # the hand and add to the respective list in hand_ranks dict.
         hand, bid = line.split(" ")
         hands_to_bids[hand] = int(bid)
-        hand_rank = get_hand_rank(hand)
+        hand_rank = get_hand_rank(hand, joker=joker)
         hand_ranks[hand_rank].append(hand)
 
     ranked_hands = []
     for hand_rank, equal_hands in hand_ranks.items():
         if equal_hands != []:
             # sort hands with an equal ranking, and add to ranked hands
-            sorted_equal_hands = sort_hands(equal_hands)
+            sorted_equal_hands = sort_hands(equal_hands, joker=joker)
             for hand in sorted_equal_hands:
                 ranked_hands.append(hand)
 
@@ -68,7 +74,7 @@ def sum_ranked_bids(lines: list[str]) -> int:
     return total
 
 
-def get_hand_rank(cards: str) -> int:
+def get_hand_rank(cards: str, joker: bool = False) -> int:
     """Get the hand's rank.
 
     Returns zero-index rank based on hand type. "Five of a kind" = 0, down to
@@ -78,6 +84,8 @@ def get_hand_rank(cards: str) -> int:
     ----------
     cards : str
         all the cards in the hand
+    joker : bool, optional
+        treat "J" as a joker instead of a jack.
 
     Returns
     -------
@@ -85,6 +93,17 @@ def get_hand_rank(cards: str) -> int:
         the rank of the hand.
 
     """
+    # handle jocker cases upfront. The premise here is that the best hand will
+    # always be given when any "J" take the value of the most common card that
+    # isn't already a "J" (hence the replace inside the counter). Other case to
+    # handle is all "J"s - so set it to the best possible hand of all.
+    if joker & (cards == "JJJJJ"):
+        cards = "AAAAA"
+    elif joker & ("J" in cards):
+        cards = cards.replace(
+            "J", Counter(cards.replace("J", "")).most_common()[0][0]
+        )
+
     # count card occurances and convert to list
     d = defaultdict(int)
     for card in cards:
@@ -108,7 +127,7 @@ def get_hand_rank(cards: str) -> int:
         return 6
 
 
-def sort_hands(hands: list[str]) -> list[str]:
+def sort_hands(hands: list[str], joker: bool = False) -> list[str]:
     """Sort the hands of equal rank in order.
 
     Highest card from first to last is used to resolve the equal ranked sort.
@@ -117,6 +136,8 @@ def sort_hands(hands: list[str]) -> list[str]:
     ----------
     hands : list[str]
         list of equally ranked hands to sort
+    joker : bool, optional
+        treat "J" as a joker instead of a jack.
 
     Returns
     -------
@@ -127,7 +148,7 @@ def sort_hands(hands: list[str]) -> list[str]:
     # map each hand of cards onto letter (to allow alphabetical sorting only)
     hand_maps = {}
     for hand in hands:
-        hand_maps[hand] = map_hand(hand)
+        hand_maps[hand] = map_hand(hand, joker=joker)
 
     # sort by the alphabetical representation and get back the original hand
     sorted_hands = sorted(hand_maps.items(), key=lambda x: x[1])
@@ -138,13 +159,15 @@ def sort_hands(hands: list[str]) -> list[str]:
     return ranking
 
 
-def map_hand(hand: str) -> str:
+def map_hand(hand: str, joker: bool = False) -> str:
     """Map cards in a hand into alphabetical characters only.
 
     Parameters
     ----------
     hand : str
         hand to map
+    joker : bool, optional
+        treat "J" as a joker instead of a jack.
 
     Returns
     -------
@@ -156,7 +179,6 @@ def map_hand(hand: str) -> str:
     card_to_letter = {
         "K": "B",
         "Q": "C",
-        "J": "D",
         "T": "E",
         "9": "F",
         "8": "G",
@@ -167,6 +189,12 @@ def map_hand(hand: str) -> str:
         "3": "N",
         "2": "O",
     }
+
+    # conditionally rank "J" as between Q and T if Jack, or last if Joker
+    if joker:
+        card_to_letter["J"] = "P"
+    else:
+        card_to_letter["J"] = "D"
 
     # replace based on mapped values
     for k, v in card_to_letter.items():
@@ -182,4 +210,14 @@ if __name__ == "__main__":
 
     # part 1 solution
     total = sum_ranked_bids(lines)
-    print(f"Part 1: sum total of all bids multiplied by their ranks: {total}")
+    print(
+        "Part 1: sum total of all bids multiplied by their ranks where J is a "
+        f"jack: {total}"
+    )
+
+    # part 2 solution
+    total = sum_ranked_bids(lines, joker=True)
+    print(
+        "Part 2: sum total of all bids multiplied by their ranks where J is a "
+        f"joker: {total}"
+    )
