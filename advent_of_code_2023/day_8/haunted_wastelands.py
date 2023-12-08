@@ -87,7 +87,10 @@ def number_ghost_steps(lines: list[str]) -> int:
         starting_point_steps.append(num_steps)
 
     # get the lowest common multiple - using reduce to apply the function
-    # across all the elements in the list
+    # across all the elements in the list. Equivalent 'loopy' solution:
+    # >>> lcm = 1
+    # >>> for steps in starting_point_steps:
+    # >>>    lcm = calculate_lcm(lcm, steps)
     lcm = reduce(calculate_lcm, starting_point_steps)
 
     return lcm
