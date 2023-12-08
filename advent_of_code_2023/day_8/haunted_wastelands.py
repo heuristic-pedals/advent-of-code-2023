@@ -4,13 +4,16 @@ Source: https://adventofcode.com/2023/day/8
 
 """
 
+from functools import reduce
+from math import gcd
+
 from advent_of_code_2023.utils import read_text_file
 
 INPUT_FILENAME = "data/day_8/input.txt"
 
 
-def number_steps(lines: list[str]) -> int:
-    """Get the number of steps needed to reach node "ZZZ" from "AAA".
+def number_camel_steps(lines: list[str]) -> int:
+    """Get the number of camel steps needed to reach node "ZZZ" from "AAA".
 
     Parameters
     ----------
@@ -28,22 +31,66 @@ def number_steps(lines: list[str]) -> int:
     commands = map_directions(lines[0])
     direction_map = get_node_map(lines[2:])
 
-    # set up conditions, knowing at least 1 step is required
-    num_steps = 1
-    current_node = "AAA"
-    for command in commands:
-        # get the next node and end when "ZZZ" is found
-        next_node = direction_map[current_node][command]
-        if next_node == "ZZZ":
-            break
-        else:
-            # continue searching, adding this direction back to the end of the
-            # direction commands. Increment to cound the number of steps
-            current_node = next_node
+    # set up conditions and then keep moving through the map reaching "ZZZ"
+    # needs to repeat whole sequence of instructions, so use outer while loop
+    # to test the condition after applying all the direction commands
+    num_steps = 0
+    node = "AAA"
+    while node != "ZZZ":
+        for command in commands:
+            node = direction_map[node][command]
             num_steps += 1
-            commands.append(command)
 
     return num_steps
+
+
+def number_ghost_steps(lines: list[str]) -> int:
+    """Calculate number of ghost steps needed to reach all nodes ending in "Z".
+
+    'Simultaneous' are all locations ending in an "A". The number of steps for
+    each starting location is calculated seperately. Then the number of steps
+    when all locations would simultaneously end on a "Z" is the least common
+    multiple.
+
+    Parameters
+    ----------
+    lines : list[str]
+        input containing directions and current/next node information
+
+    Returns
+    -------
+    int
+        number of steps required to get from a nodes ending in an "A" and to
+        simultaneously arive at all respective nodes ending in a "Z"
+
+    """
+    # map directions and get node maps
+    commands = map_directions(lines[0])
+    direction_map = get_node_map(lines[2:])
+
+    # get all the starting nodes, those ending in A
+    starting_points = []
+    for node in direction_map.keys():
+        if node[-1] == "A":
+            starting_points.append(node)
+
+    starting_point_steps = []
+    for starting_point in starting_points:
+        # get the number of steps to reach a node ending in "Z" for each
+        # starting point
+        num_steps = 0
+        node = starting_point
+        while node[-1] != "Z":
+            for command in commands:
+                node = direction_map[node][command]
+                num_steps += 1
+        starting_point_steps.append(num_steps)
+
+    # get the lowest common multiple - using reduce to apply the function
+    # across all the elements in the list
+    lcm = reduce(calculate_lcm, starting_point_steps)
+
+    return lcm
 
 
 def map_directions(line: str) -> list[int]:
@@ -92,10 +139,41 @@ def get_node_map(lines: list[str]) -> dict[str, tuple[str, str]]:
     return map_dict
 
 
+def calculate_lcm(x: int, y: int) -> int:
+    """Calculate the Lowest Common Multiple.
+
+    This is defined as x * y / GCD(x, y), where GCD is the greatest common
+    denominator. See [1]_ for more details.
+
+    Parameters
+    ----------
+    x : int
+        input 1
+    y : int
+        input 2
+
+    Returns
+    -------
+    int
+        lowest common multiple between inputs x and y
+
+    References
+    ----------
+    ..  [1] https://en.wikipedia.org/wiki/Least_common_multiple
+
+    """
+    # coherse to int type since / converts to float and output will be an int
+    # needed when using reduce() since gcd() needs int input types
+    return int((x * y) / gcd(x, y))
+
+
 if __name__ == "__main__":
     # prep input
     lines = read_text_file(INPUT_FILENAME)
 
     # part 1 solution
-    num_steps = number_steps(lines)
-    print(f"Part 1: Number of steps: {num_steps}")
+    num_steps = number_camel_steps(lines)
+    print(f"Part 1: Number of camel steps: {num_steps}")
+
+    num_steps = number_ghost_steps(lines)
+    print(f"Part 2: Number of ghost steps: {num_steps}")
