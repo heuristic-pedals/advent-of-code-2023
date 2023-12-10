@@ -4,6 +4,9 @@ Source: https://adventofcode.com/2023/day/10
 
 """
 
+import multiprocessing
+
+from joblib import Parallel, delayed
 from math import ceil
 from shapely.geometry import Polygon, Point
 
@@ -193,13 +196,16 @@ def count_containing_tiles(maze_route: list[tuple[int, int]]) -> int:
     ]
 
     # check if each tile is contained by the polygon and count if so
-    count_within = 0
-    for tile in tiles_in_route:
-        tile_point = Point(tile)
-        if poly.contains(tile_point):
-            count_within += 1
+    def check_tile_within_route(tile: list[int, int], poly: Polygon) -> bool:
+        """Check if a tile is within the map route polygon."""
+        return poly.contains(Point(tile))
 
-    return count_within
+    # parallelise checks for tile is in poly - leave one core free to be polite
+    withins = Parallel(n_jobs=multiprocessing.cpu_count() - 1)(
+        delayed(check_tile_within_route)(tile, poly) for tile in tiles_in_route
+    )
+
+    return sum(withins)
 
 
 if __name__ == "__main__":
