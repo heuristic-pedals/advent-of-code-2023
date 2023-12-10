@@ -12,7 +12,7 @@ INPUT_FILEPATH = "data/day_10/input.txt"
 
 
 def max_maze_distance(maze: list[str]) -> int:
-    """Calculate the distance to the further point from the starting tile.
+    """Calculate the distance to the furthest point from the starting tile.
 
     Parameters
     ----------
@@ -25,14 +25,15 @@ def max_maze_distance(maze: list[str]) -> int:
         further distance from the starting location, in number of tiles.
 
     """
-    # a maze symbol, entry point to next direction lookup
+    # a maze symbol, current direction to next direction lookup
+    # maps current direction to the next direction based on the pipe shape
     maze_symbols_lup = {
-        "|": {"t": "s", "b": "n"},
-        "-": {"l": "e", "r": "w"},
-        "L": {"t": "e", "r": "n"},
-        "J": {"t": "w", "l": "n"},
-        "7": {"l": "s", "b": "w"},
-        "F": {"b": "e", "r": "s"},
+        "|": {"s": "s", "n": "n"},
+        "-": {"e": "e", "w": "w"},
+        "L": {"s": "e", "w": "n"},
+        "J": {"s": "w", "e": "n"},
+        "7": {"e": "s", "n": "w"},
+        "F": {"n": "e", "w": "s"},
     }
 
     # get starting config
@@ -49,9 +50,8 @@ def max_maze_distance(maze: list[str]) -> int:
             break
 
         # otherwise, translate direction to the next tile
-        entry = get_tile_entry(direction)
         connector = maze[i][j]
-        direction = maze_symbols_lup[connector][entry]
+        direction = maze_symbols_lup[connector][direction]
 
     return ceil(num_moves / 2)
 
@@ -157,41 +157,9 @@ def move_indecies(i: int, j: int, direction: str) -> tuple[int, int]:
     elif direction == "n":
         i -= 1
     else:
-        raise ValueError("Ubable to move indecies")
+        raise ValueError("Unable to move indecies")
 
     return i, j
-
-
-def get_tile_entry(direction: str) -> str:
-    """Map directions of travel onto the next tiles entry direction.
-
-    Parameters
-    ----------
-    direction : str
-        direction of travel to next tile.
-
-    Returns
-    -------
-    str
-        one of {"t", "r", "b", "l"} which means the next tile will be entered
-        from the top, right, bottom and left resprectively.
-
-    Raises
-    ------
-    ValueError
-        When an invalid direction is provided.
-
-    """
-    if direction == "w":
-        return "r"
-    elif direction == "s":
-        return "t"
-    elif direction == "e":
-        return "l"
-    elif direction == "n":
-        return "b"
-    else:
-        raise ValueError("Unable to determine entry point")
 
 
 if __name__ == "__main__":
