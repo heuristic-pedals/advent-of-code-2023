@@ -12,7 +12,33 @@ INPUT_FILEPATH = "data/day_11/input.txt"
 
 
 def total_galaxy_distances_fill_expansions(image: list[str]) -> int:
-    """Get total distances between all galaxy combinations."""
+    """Get total distances between all galaxy combinations by filling spaces.
+
+    Exands 'gaps' where there are no galaxies to be twice as big. Then
+    calculates the manhattan distance between all galaxy combinations,
+    returning the total sum.
+
+    Parameters
+    ----------
+    image: list[str]
+        input image
+
+    Returns
+    -------
+    int
+        total sum of the distances between all galaxy combinations
+
+    Notes
+    -----
+    Not useable when the spacing for gaps is anything other than one additional
+    space.
+
+    See Also
+    --------
+    advent_of_code_2023.day_11.total_galaxy_distances_calculated_expansions
+        Similar to this function, but can handle arbitrary gap sizes.
+
+    """
     expanded_image = expand_universe(image)
     galaxy_dict = find_galaxies(expanded_image)
 
@@ -96,21 +122,42 @@ def display_image(image: list[str]) -> None:
 
 
 def expand_universe(input_image: list[str]) -> list[str]:
-    """Expand the universe when no galaxies are present."""
+    """Expand the universe when no galaxies are present in the row/col.
+
+    Adds an additional empty row/col after each empty row/col in the input
+    image.
+
+    Parameters
+    ----------
+    input_image : list[str]
+        input image to expand
+
+    Returns
+    -------
+    list[str]
+        input image expanding
+
+    """
+    # create a temp image with additional rows where needed
     temp_image = []
     galaxy_cols = set()
     all_cols = set(range(0, len(input_image[0])))
     for row in input_image:
+        # handle adding additional rows as needed
         temp_image.append(row)
         if "#" not in row:
             temp_image.append(row)
 
+        # detect positions of galaxys in this row
         galaxy_positions = [x.start() for x in re.finditer(r"#", row)]
         for position in galaxy_positions:
             galaxy_cols.add(position)
 
+    # get the difference to the expectation, and reverse to that updating
+    # columns is simplified
     empty_columns = sorted(all_cols.difference(galaxy_cols), reverse=True)
 
+    # update column spaces where additional gaps are required
     output_image = []
     for row in temp_image:
         expanded_row = row
@@ -121,14 +168,29 @@ def expand_universe(input_image: list[str]) -> list[str]:
     return output_image
 
 
-def find_galaxies(image: list[str]) -> dict:
-    """Find galaxies and create a lookup."""
+def find_galaxies(image: list[str]) -> dict[int, tuple[int, int]]:
+    """Find galaxies and create a lookup.
+
+    Parameters
+    ----------
+    image : list[str]
+        an image to detect galaxies within
+
+    Returns
+    -------
+    dict[int, tuple[int, int]]
+        keys are unique galaxy ids. values are tuples in row, column index
+        order.
+
+    """
+    # extract row column coordinates
     galaxy_cordinates = []
     for i, row in enumerate(image):
         galaxy_cols = [x.start() for x in re.finditer(r"#", row)]
         for galaxy_col in galaxy_cols:
             galaxy_cordinates.append((i, galaxy_col))
 
+    # create a lookup by giving each coordinate a unique ID
     galaxy_lup = {
         id: coords
         for id, coords in zip(
@@ -139,24 +201,53 @@ def find_galaxies(image: list[str]) -> dict:
     return galaxy_lup
 
 
-def manhattan_distance(a, b):
-    """Calculate manhattan distance."""
+def manhattan_distance(a: tuple[int, int], b: tuple[int, int]) -> int:
+    """Calculate manhattan distance.
+
+    Parameters
+    ----------
+    a : tuple[int, int]
+        row-column coordinate 1
+    b : tuple[int, int]
+        row-column coordinate 2
+
+    Returns
+    -------
+    int
+        manhattan distance between the two coordinates
+
+    """
     return sum(abs(val1 - val2) for val1, val2 in zip(a, b))
 
 
-def expansion_points(input_image):
-    """Get expansion points."""
+def expansion_points(input_image: list[str]) -> tuple[list[int], list[int]]:
+    """Calculate the row/column indecies for expansion.
+
+    Parameters
+    ----------
+    input_image : list[str]
+        image to use for calculation
+
+    Returns
+    -------
+    tuple[list[int], list[int]]
+        row and column indicies detected that require expansion, repesectively
+
+    """
     galaxy_cols = set()
     all_cols = set(range(0, len(input_image[0])))
     expansion_rows = []
     for i, row in enumerate(input_image):
+        # identify rows which need expanding
         if "#" not in row:
             expansion_rows.append(i)
 
+        # highlight any galaxy col coordinates in the row
         galaxy_positions = [x.start() for x in re.finditer(r"#", row)]
         for position in galaxy_positions:
             galaxy_cols.add(position)
 
+    # expansion columns are then the locations where no galaxys were found
     expansion_cols = sorted(all_cols.difference(galaxy_cols))
 
     return expansion_rows, expansion_cols
@@ -168,7 +259,6 @@ if __name__ == "__main__":
 
     # part 1 solution
     output = total_galaxy_distances_fill_expansions(lines)
-    assert (output == 9681886) | (output == 374)
     print(f"Part 1: Sum of galaxy distance {output}")
 
     # part 2 solution
@@ -176,7 +266,6 @@ if __name__ == "__main__":
     output = total_galaxy_distances_calculated_expansions(
         lines, expansion_factor=expansion_factor
     )
-    assert output == 791134099634
     print(
         "Part 2: Sum of galaxy distances with an expansion factor of "
         f"{expansion_factor:,} is {output}"
