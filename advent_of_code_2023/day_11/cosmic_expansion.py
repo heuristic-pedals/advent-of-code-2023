@@ -24,21 +24,19 @@ def total_galaxy_distances_fill_expansions(image: list[str]) -> int:
 
 
 def total_galaxy_distances_calculated_expansions(
-    image: list[str], expansion_factor: int = 1
+    image: list[str], expansion_factor: int = 2
 ) -> int:
     """Calculate the total galaxy distances considering an expansion factor."""
-    if expansion_factor < 1:
-        raise ValueError("Expansion factor must be greater than 1. ")
+    if expansion_factor < 2:
+        raise ValueError("Expansion factor must be greater than 2.")
 
     if not isinstance(expansion_factor, int):
         raise TypeError(
             f"`expansion factor must be an int, got {type(expansion_factor)}"
         )
 
-    # subtract one in cases where factor is bigger than 1 to known how many
-    # 'spaces' to add
-    if expansion_factor > 1:
-        expansion_factor -= 1
+    # subtract one to calculate how many 'spaces' to add
+    expansion_factor -= 1
 
     unexpanded_galaxy_dict = find_galaxies(image)
 
