@@ -26,10 +26,39 @@ def total_galaxy_distances_fill_expansions(image: list[str]) -> int:
 def total_galaxy_distances_calculated_expansions(
     image: list[str], expansion_factor: int = 2
 ) -> int:
-    """Calculate the total galaxy distances considering an expansion factor."""
+    """Calculate the total galaxy distances considering an expansion factor.
+
+    Calculates the sum total of all distances between every combination of
+    galaxy. The manhattan distance is used to calculate the distances between
+    pairs of galaxies. The method use does not rely on 'filling spaces', but
+    instead calculates the expansion dynamically, making it more suited for
+    'gaps' in space (where no galaxy lies in an image row or column).
+
+    Parameters
+    ----------
+    image : list[str]
+        input image, where # denotes a galaxy's location
+    expansion_factor : int, optional
+        how much to expand 'gaps' by, by default 2 (spaces doubled in size).
+
+    Returns
+    -------
+    int
+        sum total of all distances across all galaxy combinations.
+
+    Raises
+    ------
+    ValueError
+        When `expansion_factor` is less than 2 (to ensure an expansion).
+    TypeError
+        When `expansion_factor` is not an integer.
+
+    """
+    # handle invalid cases of expansion factor - minimum is to double the space
     if expansion_factor < 2:
         raise ValueError("Expansion factor must be greater than 2.")
 
+    # Ensure expansion factor is an integer to ensure whole number of spaces
     if not isinstance(expansion_factor, int):
         raise TypeError(
             f"`expansion factor must be an int, got {type(expansion_factor)}"
@@ -38,16 +67,19 @@ def total_galaxy_distances_calculated_expansions(
     # subtract one to calculate how many 'spaces' to add
     expansion_factor -= 1
 
+    # get the galaxy locations and determine rows + cols to expand
     unexpanded_galaxy_dict = find_galaxies(image)
-
     expansion_rows, expansion_cols = expansion_points(image)
 
+    # add the number of required expansions to the x and y coordinates. This is
+    # set by 'how many expansions occur before the galaxies row/col index'.
     expanded_galaxy_dict = {}
     for id, (x, y) in unexpanded_galaxy_dict.items():
         x_expansion = sum(x > i for i in expansion_rows) * expansion_factor
         y_expansion = sum(y > j for j in expansion_cols) * expansion_factor
         expanded_galaxy_dict[id] = (x + x_expansion, y + y_expansion)
 
+    # calculate the total of all manhattan distances between all combinations
     total = 0
     for id_1, id_2 in itertools.combinations(expanded_galaxy_dict.keys(), 2):
         total += manhattan_distance(
